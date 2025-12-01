@@ -65,7 +65,7 @@ export default function CreateNote() {
     }
   }, [editId]);
 
-  const colors = ["#E6E6D9", "#F4BFBF", "#A3C9A8", "#A0C4FF", "#FFD6A5", "#FFADAD"];
+  const colors = ["#4A6D8C", "#5C8A82", "#A66D75", "#7A6F9B", "#557A46", "#C2A661"];
 
   // --- Funções da Lista ---
   const updateListItemText = (text: string, index: number) => {

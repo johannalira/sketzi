@@ -9,13 +9,24 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+const COLORS = {
+  background: "#E9EADB",
+  textPrimary: "#232622",
+  textContrast: "#141414ff",
+  cardReminder1: "#A87070",
+  cardNote1: "#6B98B5",
+  floatingButton: "rgba(38, 38, 38, 1)",
+};
+
 export default function Home() {
   const router = useRouter();
   const today = new Date();
+
   const dayMonth = `${String(today.getDate()).padStart(2, "0")}.${String(
     today.getMonth() + 1
   ).padStart(2, "0")}`;
@@ -24,6 +35,7 @@ export default function Home() {
   const [notes, setNotes] = useState<any[]>([]);
   const [reminders, setReminders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
 
   const loadData = async () => {
     try {
@@ -58,6 +70,12 @@ export default function Home() {
 
   const handleAddNote = () => {
     router.push("/notes/create");
+    setIsSpeedDialOpen(false);
+  };
+
+  const handleAddFolder = () => {
+    router.push("/notes/createpasta");
+    setIsSpeedDialOpen(false);
   };
 
   const handleDeleteNote = async (noteId: string) => {
@@ -74,20 +92,26 @@ export default function Home() {
     try {
       const updatedReminders = reminders.filter((r) => r.id !== reminderId);
       setReminders(updatedReminders);
-      await AsyncStorage.setItem(
-        "reminders",
-        JSON.stringify(updatedReminders)
-      );
+      await AsyncStorage.setItem("reminders", JSON.stringify(updatedReminders));
     } catch (error) {
       Alert.alert("Erro", "Não foi possível excluir o lembrete.");
     }
   };
 
-  const formatReminderDate = (isoDate: string) => {
+  const formatReminderTime = (isoDate: string) => {
     const d = new Date(isoDate);
-    return `${d.getDate()}/${d.getMonth() + 1} às ${d.getHours()}:${String(
+    return `${d.getDate()}\n${String(d.getHours()).padStart(2, "0")}:${String(
       d.getMinutes()
     ).padStart(2, "0")}`;
+  };
+
+  const formatReminderMonth = (isoDate: string) => {
+    const d = new Date(isoDate);
+    const months = [
+      "JAN", "FEV", "MAR", "ABR", "MAI", "JUN",
+      "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"
+    ];
+    return months[d.getMonth()];
   };
 
   const handleViewReminder = (reminderId: string) => {
@@ -95,27 +119,28 @@ export default function Home() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#E9EADB" }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={{ paddingBottom: 120 }}
       >
-        {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={[styles.dateText, { fontSize: 32 }]}>{dayMonth}</Text>
-            <Text style={[styles.dateText, { fontSize: 36 }]}>{year}</Text>
+            <Text style={[styles.dateText, styles.dateDayMonth]}>{dayMonth}</Text>
+            <Text style={[styles.dateText, styles.dateYear]}>{year}</Text>
           </View>
-          <Text style={styles.separator}>|</Text>
+
+          <View style={styles.headerSeparator} />
+
           <TouchableOpacity
             style={styles.profileContainer}
             onPress={() => router.push("/configura")}
             activeOpacity={0.7}
           >
-            <Text style={styles.username}>Perfil</Text>
+            <Text style={styles.username}>Usernam</Text>
             <View style={styles.profileImageContainer}>
               <Image
-                source={{ uri: "http://i.pravatar.cc/100" }}
+                source={{ uri: "http://i.pravatar.cc/009" }}
                 style={styles.profileImage}
               />
             </View>
@@ -124,126 +149,139 @@ export default function Home() {
 
         {loading ? (
           <ActivityIndicator
-            size="small"
-            color="#555"
-            style={{ marginTop: 20 }}
+            size="large"
+            color={COLORS.textPrimary}
+            style={{ marginTop: 40 }}
           />
         ) : (
           <>
-            {/* Lembretes */}
-            {reminders.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Lembretes</Text>
-                <View style={styles.remindersContainer}>
-                  {reminders.map((reminder) => (
-                    <TouchableOpacity
-                      key={reminder.id}
-                      style={[
-                        styles.reminderCard,
-                        { backgroundColor: reminder.color || "#2E3A2E" },
-                      ]}
-                      onPress={() => handleViewReminder(reminder.id)}
-                      onLongPress={() => {
-                        Alert.alert(
-                          "Concluir Lembrete?",
-                          "Deseja remover este lembrete?",
-                          [
-                            { text: "Não", style: "cancel" },
-                            {
-                              text: "Sim",
-                              onPress: () =>
-                                handleDeleteReminder(reminder.id),
-                            },
-                          ]
-                        );
-                      }}
-                    >
-                      <View
-                        style={[
-                          styles.reminderBorder,
-                          { backgroundColor: reminder.color || "#2E3A2E" },
-                        ]}
-                      />
-                      <View style={styles.reminderIcon}>
-                        <Ionicons name="notifications" size={20} color="#FFF" />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={styles.reminderMessage}
-                          numberOfLines={2}
-                        >
-                          {reminder.message}
-                        </Text>
-                        <Text style={styles.reminderDate}>
-                          {formatReminderDate(reminder.date)}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
+            <View style={styles.remindersSection}>
+              {reminders.slice(0, 2).map((reminder) => (
+                <TouchableOpacity
+                  key={reminder.id}
+                  style={[
+                    styles.reminderCard,
+                    { backgroundColor: reminder.color || COLORS.cardReminder1 },
+                  ]}
+                  onPress={() => handleViewReminder(reminder.id)}
+                  onLongPress={() => {
+                    Alert.alert(
+                      "Concluir Lembrete?",
+                      "Deseja remover este lembrete?",
+                      [
+                        { text: "Não", style: "cancel" },
+                        {
+                          text: "Sim",
+                          onPress: () => handleDeleteReminder(reminder.id),
+                        },
+                      ]
+                    );
+                  }}
+                >
+                  <View style={styles.reminderCardMonth}>
+                    <Text style={styles.reminderCardMonthText}>
+                      {formatReminderMonth(reminder.date)}
+                    </Text>
+                  </View>
 
-            {/* Notas */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Minhas Notas</Text>
+                  <View style={styles.reminderCardTime}>
+                    <Text style={styles.reminderCardTimeText}>
+                      {formatReminderTime(reminder.date)}
+                    </Text>
+                  </View>
+
+                  <Text style={styles.reminderCardMessage} numberOfLines={2}>
+                    {reminder.message || "Lembrete sem descrição"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+
+              {reminders.length > 2 && (
+                <Text style={styles.moreRemindersText}>
+                  +{reminders.length - 2}{" "}
+                  {reminders.length - 2 === 1 ? "lembrete" : "lembretes"} pendentes
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.notesSection}>
               <View style={styles.notesContainer}>
                 {notes.length === 0 ? (
-                  <Text
-                    style={{
-                      textAlign: "center",
-                      marginTop: 20,
-                      color: "#555",
-                      width: "100%",
-                    }}
-                  >
-                    Nenhuma nota ainda.
+                  <Text style={styles.noDataText}>
+                    Nenhuma nota ou lista ainda.
                   </Text>
                 ) : (
-                  notes.map((note) => (
-                    <TouchableOpacity
-                      key={note.id}
-                      onPress={() =>
-                        router.push({ pathname: "/notes/view", params: note })
-                      }
-                      onLongPress={() => {
-                        Alert.alert(
-                          "Apagar bloco?",
-                          "Deseja realmente apagar este bloco?",
-                          [
-                            { text: "Cancelar", style: "cancel" },
-                            {
-                              text: "Apagar",
-                              style: "destructive",
-                              onPress: () => handleDeleteNote(note.id),
-                            },
-                          ]
-                        );
-                      }}
-                      style={[
-                        styles.noteCard,
-                        {
-                          backgroundColor: note.color || "#444",
-                          minHeight: note.mode === "list" ? 150 : 120,
-                        },
-                      ]}
-                    >
-                      <Text style={styles.noteTitle}>
-                        {note.title || "Sem título"}
-                      </Text>
-                      {note.mode === "list" && Array.isArray(note.list) ? (
-                        note.list.slice(0, 3).map((item: any, index: number) => (
-                          <Text key={index} style={styles.listItemPreview}>
-                            • {item.text}
-                          </Text>
-                        ))
-                      ) : (
-                        <Text style={styles.noteContent} numberOfLines={3}>
-                          {note.content}
+                  notes.map((note) => {
+                    const isList = note.mode === "list";
+
+                    return (
+                      <TouchableOpacity
+                        key={note.id}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/notes/view",
+                            params: { id: note.id }, //  CORRIGIDO AQUI
+                          })
+                        }
+                        onLongPress={() => {
+                          Alert.alert(
+                            "Apagar bloco?",
+                            "Deseja realmente apagar este bloco?",
+                            [
+                              { text: "Cancelar", style: "cancel" },
+                              {
+                                text: "Apagar",
+                                style: "destructive",
+                                onPress: () => handleDeleteNote(note.id),
+                              },
+                            ]
+                          );
+                        }}
+                        style={[
+                          styles.noteCard,
+                          isList ? styles.listNoteCard : styles.textNoteCard,
+                          {
+                            backgroundColor: note.color || COLORS.cardNote1,
+                            width: isList ? "100%" : "48%",
+                            minHeight: isList ? 70 : 150,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.noteTitle,
+                            isList && styles.listNoteTitle,
+                          ]}
+                        >
+                          {note.title ||
+                            (isList ? "Lista de compras" : "Título da nota")}
                         </Text>
-                      )}
-                    </TouchableOpacity>
-                  ))
+
+                        {!isList && (
+                          <Text style={styles.noteContent} numberOfLines={5}>
+                            {note.content || "Conteúdo da nota..."}
+                          </Text>
+                        )}
+
+                        {isList &&
+                          Array.isArray(note.list) &&
+                          note.list.length > 0 && (
+                            <Text
+                              style={styles.listItemPreview}
+                              numberOfLines={1}
+                            >
+                              {note.list
+                                .filter(
+                                  (item: { text: string; }) =>
+                                    item.text && item.text.trim() !== ""
+                                )
+                                .map((item: any) => item.text)
+                                .join(" • ")}
+                            </Text>
+                          )}
+                      </TouchableOpacity>
+                    );
+                  })
                 )}
               </View>
             </View>
@@ -251,9 +289,36 @@ export default function Home() {
         )}
       </ScrollView>
 
-      <TouchableOpacity style={styles.floatingButton} onPress={handleAddNote}>
-        <Ionicons name="add" size={32} color="rgba(206, 208, 181, 1)" />
-      </TouchableOpacity>
+      <View style={styles.speedDialContainer}>
+        {isSpeedDialOpen && (
+          <TouchableOpacity
+            style={[styles.speedDialAction, styles.folderButton]}
+            onPress={handleAddFolder}
+          >
+            <Ionicons name="folder-open-outline" size={24} color="#FFF" />
+          </TouchableOpacity>
+        )}
+
+        {isSpeedDialOpen && (
+          <TouchableOpacity
+            style={[styles.speedDialAction, styles.noteButton]}
+            onPress={handleAddNote}
+          >
+            <Ionicons name="create-outline" size={24} color="#FFF" />
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={styles.floatingButton}
+          onPress={() => setIsSpeedDialOpen(!isSpeedDialOpen)}
+        >
+          <Ionicons
+            name={isSpeedDialOpen ? "close" : "add"}
+            size={32}
+            color={COLORS.background}
+          />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -261,19 +326,36 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#E9EADB",
-    paddingHorizontal: 16,
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 20,
     paddingTop: 60,
   },
   header: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-end",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 20,
+    height: 80,
   },
   dateText: {
-    color: "#232622",
-    fontWeight: "600",
+    color: COLORS.textPrimary,
+    fontWeight: "700",
+    lineHeight: 50,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  dateDayMonth: {
+    fontSize: 32,
+  },
+  dateYear: {
+    fontSize: 36,
+    marginTop: -10,
+  },
+  headerSeparator: {
+    backgroundColor: COLORS.textPrimary,
+    width: 2,
+    height: '80%',
+    alignSelf: 'center',
+    marginHorizontal: 15,
   },
   profileContainer: {
     flexDirection: "row",
@@ -281,117 +363,156 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   username: {
-    color: "#232622",
+    color: COLORS.textPrimary,
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: 22,
+    fontFamily: Platform.OS === "ios" ? "System" : "sans-serif", 
   },
   profileImageContainer: {
-    width: 35,
-    height: 35,
-    borderRadius: 20,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#888",
+    borderWidth: 0,
     backgroundColor: "#ccc",
   },
   profileImage: {
     width: "100%",
     height: "100%",
   },
-  separator: {
-    color: "#232622",
-    fontSize: 18,
-    marginHorizontal: 8,
-    fontWeight: "500",
-  },
-
-  // Seções
-  section: {
-    marginTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
+  
+  // --- Lembretes (Blocos grandes e Coloridos) ---
+  remindersSection: {
+    marginTop: 15,
     marginBottom: 10,
-    marginLeft: 4,
-  },
-
-  // Lembretes
-  remindersContainer: {
-    gap: 10,
+    gap: 12,
   },
   reminderCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 12,
+    borderRadius: 15,
     overflow: "hidden",
-    padding: 15,
+    height: 120,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
   },
-  reminderBorder: {
-    width: 6,
-    height: "100%",
-    borderRadius: 3,
-    marginRight: 10,
+  reminderCardMonth: {
+    width: 60,
   },
-  reminderIcon: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    padding: 8,
-    borderRadius: 20,
-    marginRight: 12,
+  reminderCardMonthText: {
+    letterSpacing: 4,
+    color: COLORS.textContrast,
+    fontSize: 26,
+    fontWeight: "800",
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
-  reminderMessage: {
-    color: "#FFF",
+  reminderCardTime: {
+    width: 65,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 15,
+    height: '80%',
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(10, 10, 10, 0.5)',
+  },
+  reminderCardTimeText: {
+    color: COLORS.textContrast,
+    fontSize: 18,
     fontWeight: "600",
-    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
-  reminderDate: {
-    color: "#CCC",
-    fontSize: 12,
-    marginTop: 2,
+  reminderCardMessage: {
+    flex: 1,
+    color: COLORS.textContrast,
+    fontWeight: "600",
+    fontSize: 16,
+    paddingLeft: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
-
-  // Notas
+  moreRemindersText: {
+    textAlign: 'center',
+    color: COLORS.textPrimary,
+    fontSize: 14,
+    marginTop: 10,
+    fontWeight: '500',
+  },
+  
+  // --- Notas (Blocos menores) ---
+  notesSection: {
+    marginTop: 10,
+  },
   notesContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
+    alignItems: 'stretch',
+  },
+  noDataText: {
+    textAlign: "center",
+    marginTop: 40,
+    color: COLORS.textPrimary,
+    width: "100%",
+    fontSize: 16,
   },
   noteCard: {
+    borderRadius: 15,
+    marginBottom: 13,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+    justifyContent: 'flex-start',
+  },
+  textNoteCard: {
     width: "48%",
-    borderRadius: 16,
-    marginBottom: 12,
-    padding: 12,
-    justifyContent: "center",
+    minHeight: 300,
+  },
+  listNoteCard: {
+    width: "100%",
+    minHeight: 70,
   },
   noteTitle: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 16,
-    marginBottom: 6,
+    color: COLORS.textContrast,
+    fontWeight: "800",
+    fontSize: 18,
+    marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
-  noteContent: {
-    color: "#eee",
+  listNoteTitle: {
     fontSize: 14,
   },
-  listItemPreview: {
-    color: "#f5f5f5",
-    fontSize: 13,
-    marginBottom: 3,
+  noteContent: {
+    color: COLORS.textContrast,
+    fontSize: 14,
+    lineHeight: 20,
   },
-
-  floatingButton: {
+  listItemPreview: {
+    color: COLORS.textContrast,
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 5,
+  },
+  
+  // --- Speed Dial / Floating Button ---
+  speedDialContainer: {
     position: "absolute",
     bottom: 30,
     right: 25,
-    width: 55,
-    height: 55,
+    alignItems: "center",
+  },
+  floatingButton: {
+    width: 60,
+    height: 60,
     borderRadius: 15,
-    backgroundColor: "rgba(38, 38, 38, 1)",
+    backgroundColor: COLORS.floatingButton,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -399,5 +520,27 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 3,
     elevation: 6,
+    zIndex: 10,
+  },
+  speedDialAction: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+    backgroundColor: COLORS.floatingButton,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 4,
+  },
+  noteButton: {
+    backgroundColor: COLORS.floatingButton,
+  },
+  folderButton: {
+    backgroundColor: COLORS.floatingButton,
   },
 });
+

@@ -11,8 +11,8 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#2A2A2A', // Fundo escuro
           borderTopWidth: 0,
-          height: Platform.OS === 'ios' ? 85 : 60,
-          paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+          height: Platform.OS === 'ios' ? 120 : 75,
+          paddingBottom: Platform.OS === 'ios' ? 40 : 10,
           paddingTop: 10,
         },
         tabBarActiveTintColor: '#EBECE2', 
@@ -33,18 +33,38 @@ export default function TabLayout() {
 
       {/* 2. Aba Explorar (ou Notas) */}
       <Tabs.Screen
-        name="explore" 
+        name="folders" 
         options={{
-          title: 'Explorar',
+          title: 'Notas',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "compass" : "compass-outline"} size={28} color={color} />
+            <Ionicons name={focused ? "document-outline" : "document-outline"} size={28} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="lists" 
+        options={{
+          title: 'Listas',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "list" : "list-outline"} size={28} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="datetela" 
+        options={{
+          title: 'Data',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "calendar" : "calendar-outline"} size={28} color={color} />
           ),
         }}
       />
 
       {/* 3. Aba Pastas (A que estava faltando) */}
       <Tabs.Screen
-        name="folders"
+        name="pastas"
         options={{
           title: 'Pastas',
           tabBarIcon: ({ color }) => (

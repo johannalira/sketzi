@@ -122,7 +122,7 @@ const LembreteScreen = () => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
+            <Ionicons name="arrow-back" size={24} color="#f1dcdcff" />
             <Text style={[styles.headerText, { marginLeft: 10 }]}>Agendar</Text>
           </TouchableOpacity>
         </View>

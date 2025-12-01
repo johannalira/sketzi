@@ -1,5 +1,15 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Platform, ActivityIndicator } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  SafeAreaView, 
+  Platform, 
+  ActivityIndicator, 
+  Alert 
+} from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons'; 
@@ -16,7 +26,7 @@ export default function FoldersScreen() {
       if (storedNotes) {
         const parsedNotes = JSON.parse(storedNotes);
         if (Array.isArray(parsedNotes)) {
-          // Opcional: Inverter a ordem para as mais novas aparecerem primeiro
+          // Filtra apenas notas do tipo "note"
           const onlyNotes = parsedNotes.filter(n => n.mode === "note");
           setNotes(onlyNotes.reverse());
         }
@@ -35,27 +45,53 @@ export default function FoldersScreen() {
     }, [])
   );
 
+  // --- FUNÇÃO PARA APAGAR A NOTA (ADICIONADA) ---
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      // 1. Carregar TODAS as notas/listas do AsyncStorage
+      const stored = await AsyncStorage.getItem("notes");
+      let allNotes: any[] = stored ? JSON.parse(stored) : [];
+      
+      // 2. Filtrar para remover o item com o noteId do array completo
+      const updatedAllNotes = allNotes.filter((n) => n.id !== noteId);
+      
+      // 3. Atualizar o estado local de `notes` (apenas os itens de nota na tela)
+      const updatedNotes = notes.filter((n) => n.id !== noteId);
+      setNotes(updatedNotes);
+      
+      // 4. Salvar o array completo e atualizado de volta no AsyncStorage
+      await AsyncStorage.setItem("notes", JSON.stringify(updatedAllNotes));
+      
+      console.log(`Nota ${noteId} excluída com sucesso.`);
+
+    } catch (error) {
+      console.error("Erro ao excluir nota:", error);
+      Alert.alert("Erro", "Não foi possível excluir a nota.");
+    }
+  };
+  // --------------------------------------------------
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         
         {/* Cabeçalho */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>NOTAS (GRADE)</Text>
+          <Text style={styles.headerTitle}>NOTAS</Text>
         </View>
 
         {loading ? (
-           <ActivityIndicator size="large" color="#555" style={{ marginTop: 50 }} />
+          <ActivityIndicator size="large" color="#555" style={{ marginTop: 50 }} />
         ) : (
           <ScrollView contentContainerStyle={styles.scrollContent}>
             
             {notes.length === 0 ? (
-               <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>Nenhuma nota encontrada.</Text>
-                  <TouchableOpacity onPress={() => router.push('/notes/create')}>
-                     <Text style={styles.createLink}>Criar primeira nota</Text>
-                  </TouchableOpacity>
-               </View>
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Nenhuma nota encontrada.</Text>
+                <TouchableOpacity onPress={() => router.push('/notes/create')}>
+                  <Text style={styles.createLink}>Criar primeira nota</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
               <View style={styles.grid}>
                 {notes.map((note) => (
@@ -66,16 +102,30 @@ export default function FoldersScreen() {
                       { backgroundColor: note.color || '#82789E' } // Usa a cor da nota ou Roxo padrão
                     ]}
                     activeOpacity={0.8}
-                    // Ao clicar, vai para a visualização da nota igual na Home
                     onPress={() => router.push({ pathname: "/notes/view", params: note })}
+                    // Ação de clique longo para APAGAR a nota
+                    onLongPress={() => {
+                      Alert.alert(
+                        "Apagar Nota?",
+                        "Deseja realmente apagar esta nota?",
+                        [
+                          { text: "Cancelar", style: "cancel" },
+                          {
+                            text: "Apagar",
+                            style: "destructive",
+                            onPress: () => handleDeleteNote(note.id), // Chama a nova função
+                          },
+                        ]
+                      );
+                    }}
                   >
                     <Text style={styles.cardText} numberOfLines={4}>
                       {note.title || "Sem título"}
                     </Text>
                     
-                    {/* Ícone discreto indicando se é lista ou texto */}
+                    {/* Ícone discreto indicando se é lista ou texto (Embora só mostre notas, foi mantido por segurança) */}
                     {note.mode === 'list' && (
-                       <Ionicons name="checkbox-outline" size={20} color="rgba(0,0,0,0.4)" style={styles.typeIcon} />
+                      <Ionicons name="checkbox-outline" size={20} color="rgba(0,0,0,0.4)" style={styles.typeIcon} />
                     )}
                   </TouchableOpacity>
                 ))}
@@ -104,12 +154,13 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 25
   },
   headerTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#1A1A1A',
-    letterSpacing: 1,
+    color: '#2626267c',
+    letterSpacing: 2,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -123,20 +174,19 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '47%', 
-    aspectRatio: 0.85, 
-    borderRadius: 20,
+    height: 207,
+    borderRadius: 15,
     padding: 20,
     justifyContent: 'space-between', // Espalha o conteúdo (texto em cima, ícone embaixo)
-    shadowColor: "#000",
+    shadowColor: "#262626",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
   cardText: {
     fontSize: 24, // Letra grande igual ao design
     color: '#1A1A1A',
-    // Tenta usar fonte monoespaçada se disponível para ficar estiloso
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', 
     lineHeight: 28,
     marginTop: 5,
